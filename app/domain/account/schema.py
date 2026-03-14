@@ -14,7 +14,7 @@ class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserCreate(BaseModel):
+class UserCreateRequest(BaseModel):
     username: str
     email: EmailStr
     display_name: str | None = Field(min_length=4, max_length=40, description="사용자 표시명")
@@ -47,3 +47,12 @@ class UserCreate(BaseModel):
         if self.password != self.password_repeat:
             raise ValueError("비밀번호가 일치하지 않습니다.")
         return self
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.account.account_router import signup
 from app.domain.account.exceptions import DuplicatedEmail, DuplicatedUsername
-from app.domain.account.schema import UserCreate
+from app.domain.account.schema import UserCreateRequest
 
 
 @pytest.mark.asyncio
@@ -14,7 +14,7 @@ async def test_모든_입력_항목을_유효한_값으로_입력하면_계정�
     client: AsyncClient,
     db_session: AsyncSession,
 ):
-    body = UserCreate(
+    body = UserCreateRequest(
         email="text@example.com",
         username="test",
         display_name="test",
@@ -39,7 +39,7 @@ async def test_사용자명이_유효하지_않으면_사용자명이_유효하�
     username: str,
 ):
     with pytest.raises(ValidationError) as exc:
-        UserCreate(
+        UserCreateRequest(
             email="test@example.com",
             username=username,
             display_name="test",
@@ -52,7 +52,7 @@ async def test_사용자명이_유효하지_않으면_사용자명이_유효하�
 
 @pytest.mark.asyncio
 async def test_중복된_ID_계정_오류(db_session: AsyncSession):
-    body = UserCreate(
+    body = UserCreateRequest(
         email="test@example.com",
         username="test",
         display_name="test",
@@ -73,7 +73,7 @@ async def test_중복된_ID_계정_오류(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_중복된_이메일_계정_오류(db_session: AsyncSession):
-    body = UserCreate(
+    body = UserCreateRequest(
         email="test@example.com",
         username="test",
         display_name="test",
@@ -94,7 +94,7 @@ async def test_중복된_이메일_계정_오류(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_표시명을_입력하지_않으면_무작위_문자열_8글자로_대신한다(db_session: AsyncSession):
-    body = UserCreate(
+    body = UserCreateRequest(
         email="test@example.com",
         username="test",
         password="123",

@@ -18,14 +18,14 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    username: Mapped[str] = mapped_column(
-        String(40), unique=True, nullable=False, comment="사용자 계정 ID"
-    )
+    username: Mapped[str] = mapped_column(String(40), nullable=False, comment="사용자 계정 ID")
     email: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False, comment="사용자 이메일"
     )
     display_name: Mapped[str] = mapped_column(String(40), comment="사용자 표시 이름")
-    password: Mapped[str] = mapped_column(String(255), nullable=False, comment="사용자 비밀번호")
+    hashed_password: Mapped[str] = mapped_column(
+        String(255), nullable=False, comment="사용자 비밀번호"
+    )
     is_host: Mapped[bool] = mapped_column(
         Boolean,
         default=False,

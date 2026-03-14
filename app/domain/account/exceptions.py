@@ -13,3 +13,18 @@ class DuplicatedUsername(HTTPException):
         super().__init__(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="중복된 계정 ID입니다."
         )
+
+
+class UserNotFoundError(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND, detail="존재하지 않는 사용자입니다."
+        )
+
+
+class PasswordMissmatchError(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="틀린 비밀번호입니다.",
+        )

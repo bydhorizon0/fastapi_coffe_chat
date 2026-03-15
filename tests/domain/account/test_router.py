@@ -18,7 +18,7 @@ async def test_user_detail_by_http(db_session: AsyncSession, client: AsyncClient
     user = User(
         username="test",
         email="test@example.com",
-        password="test",
+        hashed_password="123",
         display_name="test",
         is_host=True,
     )

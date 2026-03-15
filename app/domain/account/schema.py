@@ -1,9 +1,20 @@
 import random
 import string
+from calendar import month
 from datetime import datetime
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
+
+from app.domain.core.utils import hash_password
 
 
 class UserResponse(BaseModel):
@@ -19,7 +30,7 @@ class UserCreateRequest(BaseModel):
     username: str
     email: EmailStr
     display_name: str | None = Field(min_length=4, max_length=40, description="사용자 표시명")
-    password: str
+    password: str = Field(min_length=3, max_length=128)
     password_repeat: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -61,5 +72,26 @@ class TokenResponse(BaseModel):
 
 class UserDetailResponse(BaseModel):
     email: EmailStr
+    username: str
+    display_name: str
     created_at: datetime
     updated_at: datetime
+
+
+class UpdateUserRequest(BaseModel):
+    username: str | None = Field(default=None, min_length=4, max_length=40)
+    display_name: str | None = Field(default=None, min_length=4, max_length=128)
+    password: str | None = Field(default=None, min_length=3, max_length=128)
+    password_repeat: str | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def check_all_fields_are_none(self) -> Self:
+        if not self.model_dump(exclude_none=True):
+            raise ValueError("최소 하나의 필드는 반드시 제공되어야 합니다.")
+        return self
+
+    @model_validator(mode="after")
+    def password_match(self) -> Self:
+        if self.password and self.password != self.password_repeat:
+            raise ValueError("비밀번호가 일치하지 않습니다.")
+        return self

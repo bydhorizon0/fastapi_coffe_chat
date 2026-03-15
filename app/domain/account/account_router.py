@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Response, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.database import DbSessionDep
 from app.domain.account.dependencies import CurrentUserDep
@@ -13,6 +13,7 @@ from app.domain.account.models import User
 from app.domain.account.schema import (
     LoginRequest,
     TokenResponse,
+    UpdateUserRequest,
     UserCreateRequest,
     UserDetailResponse,
     UserResponse,
@@ -85,3 +86,33 @@ async def login(body: LoginRequest, db: DbSessionDep, response: Response):
 @router.get("/me", status_code=status.HTTP_200_OK, response_model=UserDetailResponse)
 async def me(user: CurrentUserDep):
     return user
+
+
+@router.patch("/update", response_model=UserDetailResponse)
+async def update_user(user: CurrentUserDep, body: UpdateUserRequest, db: DbSessionDep):
+    # 이렇게 하면 None도 포함되어, NULL로 업데이트 됨.
+    # updated_data = body.model_dump(include={"username", "display_name"})
+    updated_data = body.model_dump(exclude_unset=True, exclude={"password", "password_repeat"})
+
+    for k, v in updated_data.items():
+        setattr(user, k, v)
+
+    if body.password:
+        user.hashed_password = hash_password(body.password)
+
+    # SQLAlchemy가 변경을 감지(dirty tracking) 하기 때문에 commit() 하면 DB에 업데이트된다.
+    await db.commit()
+    await db.refresh(user)
+
+    return user
+
+
+@router.delete("/logout", status_code=status.HTTP_200_OK)
+async def logout(user: CurrentUserDep, response: Response):
+    response.delete_cookie("auth_token")
+
+
+@router.delete("/unregister", status_code=status.HTTP_204_NO_CONTENT)
+async def unregister(user: CurrentUserDep, db: DbSessionDep):
+    await db.execute(delete(User).where(User.email == user.email))
+    await db.commit()

@@ -1,5 +1,6 @@
 import random
 import string
+from datetime import datetime
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
@@ -50,9 +51,15 @@ class UserCreateRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
 class TokenResponse(BaseModel):
     access_token: str
+
+
+class UserDetailResponse(BaseModel):
+    email: EmailStr
+    created_at: datetime
+    updated_at: datetime

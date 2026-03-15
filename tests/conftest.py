@@ -1,7 +1,7 @@
 from typing import AsyncGenerator
 
 import pytest_asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import (
@@ -12,6 +12,9 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.database import Base, get_db
+from app.domain.account.models import User
+from app.domain.account.schema import LoginRequest
+from app.domain.core.utils import hash_password
 
 TEST_DATABASE_URL = "mysql+aiomysql://root:root123@localhost:3306/myapi_test?charset=utf8mb4"
 
@@ -68,3 +71,34 @@ async def client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
         base_url="http://test",
     ) as client:
         yield client
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session: AsyncSession):
+    user = User(
+        username="test",
+        email="test@example.com",
+        display_name="test_fixture",
+        hashed_password=hash_password("123"),
+    )
+
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    return user
+
+
+@pytest_asyncio.fixture
+async def client_with_auth(client: AsyncClient, test_user):
+    body = LoginRequest(email="test@example.com", password="123")
+
+    response = await client.post("/account/login", json=body.model_dump())
+
+    assert response.status_code == status.HTTP_200_OK
+
+    token = response.cookies.get("auth_token")
+    assert token is not None
+
+    client.cookies["auth_token"] = token
+    yield client

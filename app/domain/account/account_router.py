@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import select
 
 from app.database import DbSessionDep
+from app.domain.account.dependencies import CurrentUserDep
 from app.domain.account.exceptions import (
     DuplicatedEmail,
     DuplicatedUsername,
@@ -9,7 +10,13 @@ from app.domain.account.exceptions import (
     UserNotFoundError,
 )
 from app.domain.account.models import User
-from app.domain.account.schema import LoginRequest, TokenResponse, UserCreateRequest, UserResponse
+from app.domain.account.schema import (
+    LoginRequest,
+    TokenResponse,
+    UserCreateRequest,
+    UserDetailResponse,
+    UserResponse,
+)
 from app.domain.core.utils import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/account")
@@ -64,12 +71,17 @@ async def login(body: LoginRequest, db: DbSessionDep, response: Response):
     access_token = create_access_token(user.email)
 
     response.set_cookie(
-        key="access_token",
+        key="auth_token",
         value=access_token,
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=60 * 30
+        max_age=60 * 30,
     )
 
     return TokenResponse(access_token=access_token)
+
+
+@router.get("/me", status_code=status.HTTP_200_OK, response_model=UserDetailResponse)
+async def me(user: CurrentUserDep):
+    return user

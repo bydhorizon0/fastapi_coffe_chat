@@ -1,11 +1,16 @@
-import pytest_asyncio
+from datetime import timedelta
+
 from fastapi import status
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.account.models import User
-from app.domain.account.schema import LoginRequest, TokenResponse, UserCreateRequest, UserResponse
-from app.domain.core.utils import hash_password
+from app.domain.account.schema import (
+    LoginRequest,
+    TokenResponse,
+    UserCreateRequest,
+    UserDetailResponse,
+    UserResponse,
+)
+from app.domain.core.utils import create_access_token, decode_token
 
 
 async def test_회원가입_성공(client: AsyncClient):
@@ -25,22 +30,6 @@ async def test_회원가입_성공(client: AsyncClient):
     assert data.email == body.email
 
 
-@pytest_asyncio.fixture
-async def test_user(db_session: AsyncSession):
-    user = User(
-        username="test",
-        email="test@example.com",
-        display_name="test_fixture",
-        hashed_password=hash_password("123"),
-    )
-
-    db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
-
-    return user
-
-
 async def test_로그인_성공(client: AsyncClient, test_user):
     body = LoginRequest(email="test@example.com", password="123")
 
@@ -52,6 +41,48 @@ async def test_로그인_성공(client: AsyncClient, test_user):
 
     assert data.access_token is not None
 
-    cookie = response.cookies.get("access_token")
+    cookie = response.cookies.get("auth_token")
     assert cookie is not None
     assert cookie == data.access_token
+
+
+async def test_내_정보_조회(client_with_auth):
+    response = await client_with_auth.get("/account/me")
+
+    assert response.status_code == status.HTTP_200_OK
+
+    data = UserDetailResponse(**response.json())
+
+
+async def test_토큰이_없는_경우_의심스런_접근_오류를_일으킨다(client: AsyncClient):
+    response = await client.get("/account/me")
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+async def test_유효하지_않은_토큰인_경우_인증_오류를_일으킨다(client_with_auth):
+    client_with_auth.cookies["auth_token"] = "invalid_token"
+    response = await client_with_auth.get("/account/me")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+async def test_만료된_토큰으로_내_정보_조회(client_with_auth):
+    token = client_with_auth.cookies.get("auth_token", domain="", path="/")
+    decoded = decode_token(token)
+    jwt = create_access_token(decoded["sub"], timedelta(hours=-1))
+    client_with_auth.cookies["auth_token"] = jwt
+
+    response = await client_with_auth.get("/account/me")
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+async def test_유저가_존재하지_않는_경우_내_정보_조회(client_with_auth):
+    token = client_with_auth.cookies.get("auth_token", domain="", path="/")
+    decode = decode_token(token)
+    decode["sub"] = "invalid_user_email"
+    jwt = create_access_token(decode["sub"])
+    client_with_auth.cookies["auth_token"] = jwt
+
+    response = await client_with_auth.get("/account/me")
+    assert response.status_code == status.HTTP_404_NOT_FOUND

@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import (
 from app.database import Base, get_db
 from app.domain.account.models import User
 from app.domain.account.schema import LoginRequest
+from app.domain.calendar.models import Calendar
 from app.domain.core.utils import hash_password
 
 TEST_DATABASE_URL = "mysql+aiomysql://root:root123@localhost:3306/myapi_test?charset=utf8mb4"
@@ -74,7 +75,7 @@ async def client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest_asyncio.fixture
-async def test_user(db_session: AsyncSession):
+async def host_user(db_session: AsyncSession):
     user = User(
         username="test",
         email="test@example.com",
@@ -90,7 +91,7 @@ async def test_user(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def client_with_auth(client: AsyncClient, test_user):
+async def client_with_auth(client: AsyncClient, host_user):
     body = LoginRequest(email="test@example.com", password="123")
 
     response = await client.post("/account/login", json=body.model_dump())
@@ -102,3 +103,35 @@ async def client_with_auth(client: AsyncClient, test_user):
 
     client.cookies["auth_token"] = token
     yield client
+
+
+@pytest_asyncio.fixture()
+async def guest_user(db_session):
+    user = User(
+        username="guest",
+        hashed_password=hash_password("root123"),
+        email="guest@gmail.com",
+        display_name="guest",
+        is_host=False,
+    )
+
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.flush()
+    return user
+
+
+@pytest_asyncio.fixture()
+async def host_user_calendar(db_session, host_user: User):
+    calendar = Calendar(
+        host_id=host_user.id,
+        description=f"{host_user.username}의 캘린더입니다.",
+        topics=["fastapi", "sqlalchemy"],
+        google_calendar_id="123123",
+    )
+
+    db_session.add(calendar)
+    await db_session.commit()
+    await db_session.refresh(host_user)
+    await db_session.flush()
+    return calendar

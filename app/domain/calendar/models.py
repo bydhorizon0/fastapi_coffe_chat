@@ -16,7 +16,7 @@ class Calendar(Base):
     __tablename__ = "calendars"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=None)
-    topic: Mapped[list[str]] = mapped_column(JSON, nullable=False, comment="게스트와 나눌 주제들")
+    topics: Mapped[list[str]] = mapped_column(JSON, nullable=False, comment="게스트와 나눌 주제들")
 
     description: Mapped[str] = mapped_column(Text, comment="게스트에게 보여줄 설명")
     google_calendar_id: Mapped[str] = mapped_column(String(1024), comment="Google Calendar ID")

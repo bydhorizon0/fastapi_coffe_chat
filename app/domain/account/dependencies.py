@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import Cookie, Depends
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import DbSessionDep
 from app.domain.account.exceptions import ExpiredTokenError, InvalidTokenError, UserNotFoundError
@@ -11,10 +12,10 @@ from app.domain.core.settings import get_settings
 from app.domain.core.utils import decode_token
 
 
-async def get_current_user(
-    auth_token: Annotated[str | None, Cookie()],
-    db_session: DbSessionDep,
-):
+async def get_user(
+    auth_token: str | None,
+    db_session: AsyncSession
+) -> User | None:
     if auth_token is None:
         raise InvalidTokenError()
 
@@ -31,6 +32,15 @@ async def get_current_user(
     result = await db_session.execute(select(User).where(User.email == decoded["sub"]))
     user = result.scalar_one_or_none()
 
+    return user
+
+
+async def get_current_user(
+    auth_token: Annotated[str | None, Cookie()],
+    db_session: DbSessionDep,
+):
+    user = await get_user(auth_token, db_session)
+
     if user is None:
         raise UserNotFoundError()
 
@@ -38,3 +48,12 @@ async def get_current_user(
 
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+async def get_current_user_optional(
+    db_session: DbSessionDep,
+    auth_token: Annotated[str | None, Cookie()] = None,
+):
+    user = await get_user(auth_token, db_session)
+    return user
+
+CurrentUserOptionalDep = Annotated[User | None, Depends(get_current_user_optional)]

@@ -30,7 +30,7 @@ async def test_회원가입_성공(client: AsyncClient):
     assert data.email == body.email
 
 
-async def test_로그인_성공(client: AsyncClient, test_user):
+async def test_로그인_성공(client: AsyncClient, host_user):
     body = LoginRequest(email="test@example.com", password="123")
 
     response = await client.post("/account/login", json=body.model_dump())

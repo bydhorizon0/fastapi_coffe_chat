@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 import app.domain.models
 from app.domain.account import account_router
+from app.domain.calendar import calendar_router
 
 
 @asynccontextmanager
@@ -18,6 +19,7 @@ app = FastAPI(lifespan=lifespan)
 
 def include_routers(_app: FastAPI):
     _app.include_router(account_router.router)
+    _app.include_router(calendar_router.router)
 
 
 include_routers(app)
